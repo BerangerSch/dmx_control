@@ -1,7 +1,7 @@
 package tpd.dmx_control;
 
 import tpd.dmx_control.controllers.DmxController;
-
+import tpd.dmx_control.device.StairvilleLedBar;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -15,24 +15,28 @@ import com.fazecast.jSerialComm.SerialPort;
 
 public class LightingApp extends Application{
     
-    // Reference to our DMX controller
+    // -- Class variables --
     private final DmxController dmxController = new DmxController();
+    private StairvilleLedBar myBar;
 
     // Interface components
     private Rectangle colorPreview;
     private Slider redSlider;
     private Slider greenSlider;
     private Slider blueSlider;
+    private Slider dimmerSlider;
+    private Slider strobeSlider;
+
+    // Star DMX Address for the Stairville LED Bar
+    private static final int BAR_START_ADDRESS = 1;
 
     @Override
     public void start(Stage stage) {
         // 1. Window config
         stage.setTitle("DMX Lighting Control");
 
-        // 2. Connection zone (top)
+        // 2. Control zones
         HBox connectionBox = createConnectionBox();
-
-        // 3. Control zone (center)
         VBox controlBox = createControlBox();
 
         // 4. Main layout (root)
@@ -42,7 +46,7 @@ public class LightingApp extends Application{
         root.setPadding(new Insets(20));
 
         // 5. Launch
-        Scene scene = new Scene(root, 400, 500);
+        Scene scene = new Scene(root, 400, 600);
         stage.setScene(scene);
         stage.show();
 
@@ -72,9 +76,14 @@ public class LightingApp extends Application{
             if (selectedPort != null) {
                 boolean success = dmxController.connect(selectedPort);
                 if (success) {
+                    myBar = new StairvilleLedBar(BAR_START_ADDRESS, dmxController);
+
                     statusLabel.setText("Connecté !");
                     statusLabel.setStyle("-fx-text-fill: green;");
                     btnConnect.setDisable(true); // To avoid clicking again
+
+                    // We make sure the dimmer is at max on connect
+                    myBar.setDimmer((int) dimmerSlider.getValue());
                 } else {
                     statusLabel.setText("Erreur de connexion");
                 }
@@ -106,21 +115,32 @@ public class LightingApp extends Application{
         redSlider = createSlider("Rouge", Color.RED);
         greenSlider = createSlider("Vert", Color.GREEN);
         blueSlider = createSlider("Bleu", Color.BLUE);
+        dimmerSlider = createSlider("Dimmer", Color.GRAY);
+        dimmerSlider.setValue(255); // Default to max
+        strobeSlider = createSlider("Strobe", Color.GRAY);
+        strobeSlider.setValue(0); // Default to off
 
         // Add listeners on sliders
         // As slider values change, we send DMX updates and refresh preview
         redSlider.valueProperty().addListener((obs, oldVal, newVal) -> updateDMXAndPreview());
         greenSlider.valueProperty().addListener((obs, oldVal, newVal) -> updateDMXAndPreview());
         blueSlider.valueProperty().addListener((obs, oldVal, newVal) -> updateDMXAndPreview());
+        dimmerSlider.valueProperty().addListener((obs, oldVal, newVal) -> updateDMXAndPreview());
+        strobeSlider.valueProperty().addListener((obs, oldVal, newVal) -> updateDMXAndPreview());
 
         box.getChildren().addAll(
             colorPreview,
             new Label("Sélecteur rapide :"), colorPicker,
             new Separator(),
             new Label("Contrôle manuel Canaux RGB :"),
-            new Label ("Rouge (Ch 1)"), redSlider,
-            new Label ("Vert (Ch 2)"), greenSlider,
-            new Label ("Bleu (Ch 3)"), blueSlider
+            new Label ("Rouge"), redSlider,
+            new Label ("Vert"), greenSlider,
+            new Label ("Bleu"), blueSlider,
+            new Separator(),
+            new Label ("Dimmer (Intensité Globale)"),
+            dimmerSlider,
+            new Label ("Strobe (Vitesse)"),
+            strobeSlider
         );
         return box;
     }
@@ -140,15 +160,19 @@ public class LightingApp extends Application{
         int r = (int) redSlider.getValue();
         int g = (int) greenSlider.getValue();
         int b = (int) blueSlider.getValue();
+        int d = (int) dimmerSlider.getValue();
+        int s = (int) strobeSlider.getValue();
 
         // 1. Visual preview update
         colorPreview.setFill(Color.rgb(r, g, b));
 
         // 2. DMX channels update
         // We suppose that address is 001. So Red=Ch1, Green=Ch2, Blue=Ch3
-        dmxController.setChannel(1, r);
-        dmxController.setChannel(2, g);
-        dmxController.setChannel(3, b);
+        if (myBar != null) {
+            myBar.setColor(Color.rgb(r, g, b));
+            myBar.setDimmer(d);
+            myBar.setStrobeSpeed(s);
+        }
     }
 
     public static void main(String[] args) {
