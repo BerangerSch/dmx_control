@@ -29,7 +29,7 @@ public class DmxController implements Runnable {
         serialPort.setComPortTimeouts(SerialPort.TIMEOUT_NONBLOCKING, 0, 0);
 
         if (serialPort.openPort()) {
-            System.out.ptrintln("Connecté au port : " + portName);
+            System.out.println("Connecté au port : " + portName);
             startTransmission();
             return true;
         } else {
@@ -60,7 +60,7 @@ public class DmxController implements Runnable {
                 e.printStackTrace();
             }
         }
-        if (serialPort != null && serialPort.isOPen()) {
+        if (serialPort != null && serialPort.isOpen()) {
             serialPort.closePort();
         }
         System.out.println("DMX Controller arrêté.");
