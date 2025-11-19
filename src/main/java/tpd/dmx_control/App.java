@@ -4,7 +4,6 @@ import tpd.dmx_control.utils.CheckPorts;
 import tpd.dmx_control.controllers.DmxController;
 
 import com.fazecast.jSerialComm.SerialPort;
-import java.util.Scanner;
 
 public class App 
 {
